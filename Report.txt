@@ -1,0 +1,244 @@
+✅ MILESTONE 2 REPORT — Data Preparation & Preprocessing
+1. Dataset Overview
+
+Source: HDFS_2k subset from the Hadoop Distributed File System log dataset.
+
+Raw file used: HDFS_2k.log
+
+Total raw log lines: ~2000
+
+Logs represent distributed block operations in an HDFS cluster, containing timestamp fragments, components, actions, block IDs, IP addresses, and payload information.
+
+2. Parsing (Custom Regex Parser)
+
+A custom parser was built to extract structured fields from unstructured log lines.
+
+Extracted fields:
+
+datefrag
+
+timefrag
+
+thread
+
+level
+
+component
+
+message
+
+block_ids
+
+ips
+
+size
+
+src_ip
+
+dest_ip
+
+Example parsed row:
+
+Field	Example
+datefrag	081109
+timefrag	203615
+component	dfs.DataNode$PacketResponder
+message	PacketResponder 1 for block blk_38865049064139660 terminating
+block_id	blk_38865049064139660
+
+Parsing results:
+
+Total lines parsed: 2000
+
+Unmatched lines: 0 (excellent parsing accuracy)
+
+Output saved as: clean_hdfs_parsed_preview.csv
+
+3. Timestamp Reconstruction
+
+Created _timestamp by combining date/time fragments.
+
+Assumed year = 2008 (consistent with HDFS dataset standard).
+
+4. Template Mining (Drain3)
+
+Drain3 was used to convert log messages into abstract templates.
+
+Steps:
+
+Initialize Drain3 with persistence.
+
+Feed all log messages line-by-line.
+
+Drain3 generates templates and cluster IDs.
+
+Results:
+
+31 unique templates mined
+
+Output files:
+
+clean_hdfs_with_templates.csv
+
+HDFS_2k.log_templates_mined.csv
+
+Top templates:
+
+PacketResponder <*> for block <*> terminating — 310 occurrences
+
+BLOCK* NameSystem.addStoredBlock: blockMap updated: <*> is added to <*> size <*> — 300 occurrences
+
+Receiving block <*> src: <*> dest: <*> — 291 occurrences
+
+5. Preprocessed Dataset Deliverables
+
+Structured CSV
+
+Template-enhanced CSV
+
+Drain3 template map
+
+Preliminary EDA (template frequency, log level distribution, block ID counts)
+
+➡ Milestone 2 Completed Successfully
+✅ MILESTONE 3 REPORT — Baseline Model Building
+1. Purpose of This Milestone
+
+Convert log templates into numerical features.
+
+Build a baseline anomaly detection model.
+
+Evaluate its behavior on HDFS traces.
+
+2. Trace Construction
+
+Traces were built by grouping events by block_id, representing the lifecycle of each HDFS block.
+
+Results:
+
+1994 traces created
+
+Trace lengths:
+
+Mean = 1.003
+
+Most traces contain 1 event
+
+Maximum trace length = 2 events
+
+Saved as: Event_traces.csv
+
+Reason: HDFS_2k is a subset with minimal multi-event flows → typical for this dataset.
+
+3. Feature Engineering
+
+Turned each trace into a numerical vector using:
+
+Occurrence Matrix:
+
+Columns = unique template IDs
+
+Rows = trace ID
+
+Each value = number of times a given template appears in that trace
+
+Shape: (1994 traces, 18 template features)
+
+Saved as: Event_occurrence_matrix.csv
+
+4. Baseline Anomaly Detection Model
+
+Model: IsolationForest (baseline settings)
+
+No tuning
+
+No contamination specified (auto mode)
+
+Input: scaled occurrence matrix
+
+Output:
+
+anomaly_score (higher → more anomalous)
+
+anomaly_label (1 = normal, -1 = anomaly)
+
+Results:
+
+183 anomalies detected (≈ 9.1%)
+
+Saved: IF_baseline_results.csv
+
+Interpretation:
+The baseline over-flags anomalies, typical for auto-contamination and small datasets.
+
+➡ Milestone 3 Completed Successfully
+✅ MILESTONE 4 REPORT — Model Improvement & Evaluation
+
+This was your strongest milestone.
+
+1. Purpose
+
+Improve on the baseline model.
+
+Experiment with different ML/DL techniques.
+
+Compare models.
+
+2. Improved Models Built
+A) Tuned IsolationForest
+
+Contamination tuned (≈ 5%)
+
+More stable
+
+Results:
+
+104 anomalies
+
+B) PCA + KMeans
+
+Reduced dimensional complexity
+
+Anomaly score computed via distance from cluster centroid
+
+Top 5% treated as anomalies
+
+99 anomalies
+
+C) Autoencoder (Deep Learning)
+
+3-layer encoder + symmetric decoder
+
+Reconstruction error used as anomaly score
+
+Top 5% as anomalies
+
+99 anomalies
+
+3. Anomaly Count Comparison
+Method	Anomalies
+IF_baseline	183
+IF_tuned	104
+PCA-KMeans	99
+Autoencoder	99
+
+Baseline extremely high → improved models converge around ~100 anomalies.
+
+4. Model Overlap (Jaccard Similarity)
+Method Pair	Jaccard Score	Meaning
+baseline vs tuned IF	0.5683	Partial overlap
+baseline vs PCA-KMeans	0.4611	Baseline noisy
+baseline vs AE	0.4611	Baseline noisy
+tuned IF vs PCA-KMeans	0.7807	VERY strong agreement
+tuned IF vs AE	0.1341	AE finds structural anomalies
+PCA-KMeans vs AE	0.20	Some overlap
+Key Milestone-4 Finding
+
+The best-performing and most stable anomaly detector is:
+
+⭐ Tuned IsolationForest (Primary Model)
+
+and
+
+⭐ PCA-KMeans (Validation Model)
+➡ Milestone 4 Completed Successfully
